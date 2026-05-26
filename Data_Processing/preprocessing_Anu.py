@@ -187,3 +187,49 @@ def preprocess_wind_data(file_path):
     df.reset_index(drop=True, inplace=True)
 
     return df
+
+
+
+# ==========================================
+# HOLIDAY DATA PREPROCESSING
+# ==========================================
+
+def preprocess_holiday_data(file_path):
+
+    # Load dataset
+    df = pd.read_csv(file_path)
+
+    # Clean column names
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
+
+    # Convert date to datetime
+    df["date"] = pd.to_datetime(
+        df["date"],
+        errors="coerce"
+    )
+
+    # Drop missing values
+    df.dropna(inplace=True)
+
+    # Convert daily data to hourly data
+    df_hourly = (
+        df
+        .set_index("date")
+        .resample("h")
+        .ffill()
+        .reset_index()
+    )
+
+    # Rename date to datetime
+    df_hourly = df_hourly.rename(columns={"date": "datetime"})
+
+    # Sort and reset index
+    df_hourly = df_hourly.sort_values("datetime")
+    df_hourly.reset_index(drop=True, inplace=True)
+
+    return df_hourly
