@@ -8,7 +8,7 @@
 def preprocess_generation_data(file_path):
 
     # Loading the Data
-    df = pd.read_csv("../notebooks/Jacques/Data/generation_output_merged.csv", low_memory = False)
+    df = pd.read_csv(file_path, low_memory = False)
 
     # Cleaning schema renaming in Jan 1st 2020. COnsolidating into Trading Date
     df['Trading_date'] = df['Trading_date'].fillna(df['Trading_Date'])
@@ -91,7 +91,7 @@ def preprocess_generation_data(file_path):
             datetime_nz    = ('datetime_nz',    'max'),   # 👈 max instead of mean
             datetime_utc12 = ('datetime_utc12', 'max'),   # 👈
             datetime_utc   = ('datetime_utc',   'max'),   # 👈
-            generation_kwh = ('generation_kwh', 'mean'),  # still mean for the value
+            generation_kwh = ('generation_kwh', 'sum'),  # still mean for the value
         )
         .reset_index()
         .drop(columns=['hour_bucket'])   # duplicate of datetime_utc12 after the groupby
