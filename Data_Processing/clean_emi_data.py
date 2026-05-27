@@ -181,7 +181,6 @@ def clean_hvdc():
 
 
     hvdc_utc12.reset_index(inplace=True)
-    hvdc_utc12.info()
 
     hvdc_utc12.to_csv(save_path, index=False)
     print(f"✅ hvdc has been cleaned and saved under {save_path} ✅")
@@ -227,5 +226,3 @@ def clean_outages():
     print(f"✅ production outages has been cleaned and saved under {save_path} ✅")
 
     return df_outages
-
-clean_outages()
