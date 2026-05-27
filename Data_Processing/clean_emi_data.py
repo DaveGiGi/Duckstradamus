@@ -133,4 +133,99 @@ def clean_demand_per_zone():
 
     return demand_utc12
 
-clean_demand_per_zone()
+def clean_hvdc():
+    """convert into utc12 and also fill some of the missing values (most often when there was maintainance -> so set to 0)"""
+
+    save_path="data_output/hvdc_utc12.csv"
+
+    hvdc = pd.read_csv("data_input/hvdc_transfer.csv")
+
+    hvdc = hvdc[['Period start', 'Direction','Peak flow (MW)', 'Average flow (MW)']].rename(columns={
+    'Period start': 'datetime',
+    'Peak flow (MW)': 'peak_flow_MW',
+    'Average flow (MW)': 'avg_flow_MW'
+    })
+
+    hvdc['datetime'] = pd.to_datetime(hvdc['datetime'], dayfirst=True)
+
+
+    # Step 1: handle duplicates
+    hvdc_dupes = hvdc[hvdc['datetime'].duplicated(keep='first')].copy()
+    hvdc_clean = hvdc[~hvdc['datetime'].duplicated(keep='first')].copy()
+
+    # Step 2: set index and convert to UTC+12
+    hvdc_clean = hvdc_clean.set_index('datetime')
+    hvdc_clean.index = (
+        pd.to_datetime(hvdc_clean.index)
+        .tz_localize('Pacific/Auckland', ambiguous='NaT', nonexistent='NaT')
+        .tz_convert('Etc/GMT-12')
+        .tz_localize(None)
+    )
+    hvdc_clean = hvdc_clean[hvdc_clean.index.notna()]
+
+    # Step 3: convert dupes to UTC+12 as well
+    hvdc_dupes = hvdc_dupes.set_index('datetime')
+    hvdc_dupes.index = (
+        pd.to_datetime(hvdc_dupes.index)
+        .tz_localize('Pacific/Auckland', ambiguous=True, nonexistent='NaT')
+        .tz_convert('Etc/GMT-12')
+        .tz_localize(None)
+    )
+
+    # Step 4: reinsert into slots that don't already exist
+    new_slots = hvdc_dupes.index[~hvdc_dupes.index.isin(hvdc_clean.index)]
+    hvdc_clean = pd.concat([hvdc_clean, hvdc_dupes.loc[new_slots]]).sort_index()
+
+    # Step 5: fill maintenance gaps with 0
+    hvdc_utc12 = hvdc_clean.resample('30min').asfreq().fillna(0)
+
+
+    hvdc_utc12.reset_index(inplace=True)
+    hvdc_utc12.info()
+
+    hvdc_utc12.to_csv(save_path, index=False)
+    print(f"✅ hvdc has been cleaned and saved under {save_path} ✅")
+
+    return hvdc_utc12
+
+def clean_outages():
+    save_path="data_output/scheduled_outages_utc12.csv"
+
+
+        # Load
+    df = pd.read_csv('data_input/scheduled_outages.csv')
+    df.columns = ['Timestamp', 'SeriesCode', 'Series', 'MW']
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'], dayfirst=True)
+
+    # Convert Auckland local -> UTC+12 fixed (consistent with demand data)
+    df['Timestamp'] = (
+        df['Timestamp']
+        .dt.tz_localize('Pacific/Auckland', ambiguous='NaT', nonexistent='NaT')
+        .dt.tz_convert('Etc/GMT-12')
+        .dt.tz_localize(None)
+    )
+
+    # Drop NaT rows (DST transitions)
+    df = df[df['Timestamp'].notna()]
+
+    # Pivot: one column per technology, one row per change event
+    df_wide = df.pivot_table(index='Timestamp', columns='SeriesCode', values='MW', aggfunc='first')
+    df_wide.columns.name = None
+
+    # Build continuous 30-min index and forward-fill each tech independently
+    start = df_wide.index.min()
+    end = df_wide.index.max()
+    full_index = pd.date_range(start=start, end=end, freq='30min')
+
+    df_outages = df_wide.reindex(full_index).ffill().fillna(0)
+    df_outages.index.name = 'Timestamp'
+
+
+    df_outages.reset_index(inplace=True)
+
+    df_outages.to_csv(save_path, index=False)
+    print(f"✅ production outages has been cleaned and saved under {save_path} ✅")
+
+    return df_outages
+
+clean_outages()
