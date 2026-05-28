@@ -3,9 +3,9 @@
 # FINAL CLEANING CODE
 # GENERATION DATA PREPROCESSING
 # ==========================================
+import pandas as pd
 
-
-def preprocess_generation_data(file_path):
+def preprocess_generation_data(file_path, start_date, end_date):
 
     # Loading the Data
     df = pd.read_csv(file_path, low_memory = False)
@@ -135,3 +135,6 @@ def preprocess_generation_data(file_path):
         fill_value=0                # if no plants of that fuel ran in that hour → 0
     ).reset_index()
     df_by_fuel.columns.name = None
+
+    df = df_by_fuel[(df_by_fuel['datetime_utc12'] >= start_date) & (df_by_fuel['datetime_utc12'] <= end_date)].reset_index(drop=True)
+    return df

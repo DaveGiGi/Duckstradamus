@@ -247,14 +247,14 @@ def create_nz_holiday_data(
 import pandas as pd
 
 def make_lake_hourly(
-    file_path,
+    df,
     start_date=None,
     end_date=None,
     save=True
 ):
 
     # Load dataset
-    df = pd.read_csv(file_path)
+    df = df
 
     # Convert datetime
     df["datetime"] = pd.to_datetime(df["datetime"])
@@ -310,7 +310,7 @@ def make_lake_hourly(
     hourly_df = hourly_df.reset_index()
 
     # Save file if requested
-    if save:
-        hourly_df.to_csv(file_path, index=False)
+    # if save:
+    #     hourly_df.to_csv(file_path, index=False)
 
     return hourly_df

@@ -91,7 +91,7 @@ def preprocess_hvdc(df):
 
     # Derive direction from sign of avg_flow
     df_hourly_hvdc['Direction'] = df_hourly_hvdc['avg_flow_MW'].map(
-    lambda x: 'Northward at Haywards' if x > 0 else ('Southward at Benmore' if x < 0 else '0')
+    lambda x: 1 if x > 0 else (-1 if x < 0 else 0)
     )
 
     df_hourly_hvdc.to_csv(save_path, index=False)
@@ -99,7 +99,7 @@ def preprocess_hvdc(df):
 
     return df_hourly_hvdc
 
-def clean_outages(df):
+def preprocess_outages(df):
     save_path = 'data_output/outages_preprocessed.csv'
 
     df['hour_bucket'] = (
