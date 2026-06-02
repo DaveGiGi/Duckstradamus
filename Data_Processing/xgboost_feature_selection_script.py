@@ -171,8 +171,6 @@ def prepare_xgboost_features(
         for _, row in df_corr.iterrows():
             feat = row['feature']
             corr_lag_val = row[lag_col]
-            if feat == target:
-                continue   # don't include target as its own feature
             feature_lags.setdefault(feat, []).append((lag_name, corr_lag_val))
 
     rows = []
@@ -237,10 +235,28 @@ def prepare_xgboost_features(
     )
 
     to_drop = set()
+
+    target_prefix = f"{target}__"
+
     for _, row in pairs.iterrows():
-        a, b = row['feat_a'], row['feat_b']
+
+        a = row['feat_a']
+        b = row['feat_b']
+
         if a in to_drop or b in to_drop:
             continue
+
+        a_is_target_lag = a.startswith(target_prefix)
+        b_is_target_lag = b.startswith(target_prefix)
+
+        if a_is_target_lag and not b_is_target_lag:
+            to_drop.add(b)
+            continue
+
+        if b_is_target_lag and not a_is_target_lag:
+            to_drop.add(a)
+            continue
+
         if target_corr_lookup[a] >= target_corr_lookup[b]:
             to_drop.add(b)
         else:
@@ -297,6 +313,7 @@ X_final           = result['X_final']
 df_transformed    = result['df_transformed']
 target_was_logged = result['target_was_logged']
 features_logged   = result['features_logged']
+
 The df_transformed is what you'll use to extract y (the target column). It contains the log-transformed
 values — so y = df_transformed[target] gives you log-prices if logging happened.
 Three things worth knowing
@@ -316,3 +333,34 @@ notebooks call it with verbose=True for exploration, scripts and production code
 Want to do a quick test run to confirm it produces the same X_final.shape as your manual
 notebook execution? That would catch any bug before we move on.
 """
+
+
+def build_xgboost_dataset(result):
+    """
+    Takes the dict returned by prepare_xgboost_features and assembles a single
+    DataFrame ready for XGBoost training.
+
+    Returns
+    -------
+    df_xgb : pd.DataFrame
+        Datetime-indexed, containing:
+          - All lagged feature columns (e.g. demand_north__lag_24h, etc.)
+          - The target column (log-transformed if applicable)
+        NaN warmup rows from the longest lag (~336 hours) are dropped.
+        Ready to split chronologically into X/y for training.
+    """
+    X_final         = result['X_final']
+    df_transformed  = result['df_transformed']
+    target          = result['target']
+
+    # Align target with X_final's index (same datetime index either way, but explicit)
+    y = df_transformed.loc[X_final.index, target]
+
+    # Combine into a single DataFrame
+    df_xgb = X_final.copy()
+    df_xgb[target] = y
+
+    # Drop the warmup NaN rows (~336 from the longest shift/rolling)
+    df_xgb = df_xgb.dropna()
+
+    return df_xgb
