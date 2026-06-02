@@ -4,7 +4,6 @@ from scipy.stats import skew
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 def prepare_xgboost_features(
     df,
     target,
@@ -58,6 +57,7 @@ def prepare_xgboost_features(
     """
 
     df = df.copy()
+    df = df.set_index('datetime_utc12')
 
     if verbose:
         print(f"Starting pipeline: df shape {df.shape}, target = {target}")
@@ -235,9 +235,7 @@ def prepare_xgboost_features(
     )
 
     to_drop = set()
-
     target_prefix = f"{target}__"
-
     for _, row in pairs.iterrows():
 
         a = row['feat_a']
@@ -249,10 +247,20 @@ def prepare_xgboost_features(
         a_is_target_lag = a.startswith(target_prefix)
         b_is_target_lag = b.startswith(target_prefix)
 
+        # -------------------------------------------------
+        # NEVER PRUNE TARGET LAGS
+        # -------------------------------------------------
+
+        # Target lag vs target lag
+        if a_is_target_lag and b_is_target_lag:
+            continue
+
+        # Target lag vs non-target lag
         if a_is_target_lag and not b_is_target_lag:
             to_drop.add(b)
             continue
 
+        # Non-target lag vs target lag
         if b_is_target_lag and not a_is_target_lag:
             to_drop.add(a)
             continue
@@ -261,6 +269,21 @@ def prepare_xgboost_features(
             to_drop.add(b)
         else:
             to_drop.add(a)
+
+    if verbose:
+        target_lags = [
+            c for c in X_features.columns
+            if c.startswith(target_prefix)
+        ]
+
+        print("\nTarget lag features generated:")
+        for c in target_lags:
+            print(f"   {c}")
+
+        print("\nTarget lag features dropped:")
+        for c in target_lags:
+            if c in to_drop:
+                print(f"   {c}")
 
     X_final = X_features.drop(columns=list(to_drop))
 
