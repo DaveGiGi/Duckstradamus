@@ -102,7 +102,7 @@ Daily-resolution version of v3. Hourly data aggregated to daily before modelling
 ---
 
 ## 5. `xgboost_classifier_spikes.ipynb`
-**Status:** ✅ Current spike classifier
+**Status:** ✅ Current spike classifier --> failed: prediction not good enough to use in LSTM
 
 Multiclass classification model predicting whether each hour is a price spike. Designed to feed spike labels into the downstream LSTM.
 
@@ -142,7 +142,7 @@ Multiclass classification model predicting whether each hour is a price spike. D
 ---
 
 ## 6. `logreg_spike_check.ipynb`
-**Status:** ✅ Diagnostic tool
+**Status:** Diagnostic tool
 
 Logistic regression sanity check. Tests whether any features are linearly informative for spike detection before committing to the XGBoost classifier.
 
