@@ -241,22 +241,25 @@ fig = px.line(
     },
 )
 
-fig.add_vline(
+fig.add_shape(
+    type="line",
+    x0=selected_time,
+    x1=selected_time,
+    y0=0,
+    y1=1,
+    xref="x",
+    yref="paper",
+    line=dict(color="yellow", dash="dash", width=2),
+)
+
+fig.add_annotation(
     x=selected_time,
-    line_dash="dash",
-    annotation_text="Selected Time",
-    annotation_position="top",
-)
-
-fig.update_layout(
-    template="plotly_dark",
-    height=550,
-    hovermode="x unified",
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True,
+    y=1,
+    xref="x",
+    yref="paper",
+    text="🦆 Selected Point",
+    showarrow=False,
+    yshift=10,
 )
 
 
