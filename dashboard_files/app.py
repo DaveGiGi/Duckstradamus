@@ -25,37 +25,96 @@ st.markdown(
     """
 <style>
 .stApp {
-    background: radial-gradient(circle at top, #172554 0%, #020617 45%, #020617 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 45%, #020617 100%);
+    color: #F8FAFC !important;
 }
 
-[data-testid="stMetric"] {
-    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
-    border-radius: 18px;
-    padding: 20px;
-    border: 1px solid rgba(255,255,255,0.12);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+html, body, p, span, label, div, li {
+    color: #F8FAFC !important;
 }
 
 section[data-testid="stSidebar"] {
     background-color: #0f172a;
+    border-right: 1px solid rgba(255,255,255,0.12);
 }
 
-h1, h2, h3 {
-    color: white;
+section[data-testid="stSidebar"] * {
+    color: #F8FAFC !important;
 }
 
-.control-card {
-    background: rgba(255,255,255,0.06);
+h1 {
+    color: #FFFFFF !important;
+    font-size: 42px !important;
+    font-weight: 800 !important;
+}
+
+h2 {
+    color: #E2E8F0 !important;
+    font-weight: 750 !important;
+}
+
+h3 {
+    color: #CBD5E1 !important;
+    font-weight: 700 !important;
+}
+
+p {
+    color: #CBD5E1 !important;
+    font-size: 16px !important;
+}
+
+[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.13);
     border-radius: 18px;
-    padding: 18px;
-    border: 1px solid rgba(255,255,255,0.12);
-    margin-bottom: 14px;
+    padding: 24px;
+    border: 1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+
+[data-testid="stMetricLabel"] {
+    color: #CBD5E1 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #FFFFFF !important;
+    font-size: 34px !important;
+    font-weight: 800 !important;
+}
+
+div[data-testid="stRadio"] label,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stSlider"] label,
+div[data-testid="stToggle"] label {
+    color: #F8FAFC !important;
+    font-weight: 600 !important;
+}
+
+div[data-baseweb="select"] {
+    background-color: white !important;
+    border-radius: 10px !important;
+}
+
+div[data-baseweb="select"] * {
+    color: #111827 !important;
+}
+
+div[data-testid="stAlert"] {
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+}
+
+[data-testid="stDataFrame"] {
+    background-color: white !important;
+    border-radius: 12px !important;
 }
 
 .risk-duck {
-    font-size: 56px;
-    font-weight: bold;
-    margin-top: 10px;
+    font-size: 52px;
+    font-weight: 800;
+    margin-top: 20px;
+    color: #FFFFFF !important;
 }
 
 .calm-duck {
@@ -81,8 +140,15 @@ h1, h2, h3 {
 }
 
 @keyframes panicduck {
-    from { transform: translateX(0px) rotate(-8deg); }
-    to { transform: translateX(130px) rotate(8deg); }
+    0%   { transform: rotate(-3deg); }
+    25%  { transform: rotate(3deg); }
+    50%  { transform: rotate(-3deg); }
+    75%  { transform: rotate(3deg); }
+    100% { transform: rotate(-3deg); }
+}
+
+.panic-duck {
+    animation: panicduck 1.5s ease-in-out infinite;
 }
 </style>
 """,
@@ -103,14 +169,14 @@ def show_duck_status(error_value, price_value):
         )
 
     elif error_value < 60 and price_value < 250:
-        st.warning("🟡 Duck Status: Alert Market | Moderate Error")
+        st.warning("🟡 Duck Status: Alert Market | Moderate Movement")
         st.markdown(
             '<div class="risk-duck alert-duck">🦆⚠️ Alert Duck</div>',
             unsafe_allow_html=True,
         )
 
     else:
-        st.error("🔴 Duck Status: Panic Market | High Error or Price Spike")
+        st.error("🔴 Duck Status: Panic Market | High Risk or Price Spike")
         st.markdown(
             '<div class="risk-duck panic-duck">🦆🚨 Panic Duck</div>',
             unsafe_allow_html=True,
@@ -146,13 +212,15 @@ def load_data():
         app_dir / "notebooks" / "xgboost_v3_test_predictions_with_dates.csv",
         app_dir / "xgboost_v3_test_predictions_with_dates.csv",
         app_dir.parent / "notebooks" / "xgboost_v3_test_predictions_with_dates.csv",
+        app_dir.parent / "Model_XGBoost" / "xgboost_v3_test_predictions_with_dates.csv",
+        app_dir.parent / "notebooks" / "Anu" / "notebooks" / "xgboost_v3_test_predictions_with_dates.csv",
     ]
 
     for path in possible_paths:
         if path.exists():
             return pd.read_csv(path)
 
-    matches = list(app_dir.rglob("*test_predictions_with_dates.csv"))
+    matches = list(app_dir.parent.rglob("xgboost_v3_test_predictions_with_dates.csv"))
 
     if matches:
         return pd.read_csv(matches[0])
@@ -161,8 +229,22 @@ def load_data():
     st.stop()
 
 
+def style_plot(fig, height=600):
+    fig.update_layout(
+        template="plotly_dark",
+        hovermode="x unified",
+        height=height,
+        font=dict(color="white", size=15),
+        title=dict(font=dict(color="white", size=24)),
+        legend=dict(font=dict(color="white")),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15,23,42,0.7)",
+    )
+    return fig
+
+
 # ============================================================
-# LOAD + PREPARE DATA
+# LOAD DATA
 # ============================================================
 
 df = load_data()
@@ -231,24 +313,23 @@ if page == "Executive Summary":
         ### ⚡ Market Intelligence Powered by Ducks
 
         This dashboard predicts New Zealand electricity prices using the XGBoost V3 model.
-        The duck reacts to market risk, model error, and spike events.
+        The duck reacts to market risk, model movement, and spike events.
         """
     )
 
-    rmse = np.sqrt(np.mean(df["error"] ** 2))
-    mae = df["abs_error"].mean()
-    avg_price = df[actual_col].mean()
     latest_price = df[actual_col].iloc[-1]
     latest_pred = df[pred_col].iloc[-1]
     latest_error = abs(latest_price - latest_pred)
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    avg_price = df[actual_col].mean()
+    max_price = df[actual_col].max()
 
-    col1.metric("Current Price", f"${latest_price:,.2f}")
-    col2.metric("Prediction", f"${latest_pred:,.2f}")
-    col3.metric("Latest Error", f"${latest_error:,.2f}")
-    col4.metric("RMSE", f"{rmse:,.2f}")
-    col5.metric("MAE", f"{mae:,.2f}")
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("⚡ Current Price", f"${latest_price:,.2f}/MWh")
+    col2.metric("🔮 Forecast Price", f"${latest_pred:,.2f}/MWh")
+    col3.metric("📊 Average Price", f"${avg_price:,.2f}/MWh")
+    col4.metric("🚨 Highest Price", f"${max_price:,.2f}/MWh")
 
     show_duck_status(latest_error, latest_price)
 
@@ -287,8 +368,6 @@ if page == "Executive Summary":
     if duck_filter != "All":
         plot_df = plot_df[plot_df["duck_mood"] == duck_filter]
 
-    spike_threshold = None
-
     if show_spikes:
         spike_threshold = st.slider(
             "Spike Threshold ($/MWh)",
@@ -316,15 +395,10 @@ if page == "Executive Summary":
         },
     )
 
-    fig.update_layout(
-        template="plotly_dark",
-        hovermode="x unified",
-        height=600,
-    )
-
     if log_scale:
         fig.update_yaxes(type="log")
 
+    fig = style_plot(fig, height=600)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
@@ -345,19 +419,15 @@ if page == "Executive Summary":
         y="abs_error",
         color="duck_mood",
         hover_data=[datetime_col, actual_col, pred_col, "error"],
-        title="Where does the model fail?",
+        title="Where does the model struggle?",
         labels={
             actual_col: "Actual Price ($/MWh)",
-            "abs_error": "Absolute Error",
+            "abs_error": "Absolute Difference",
             "duck_mood": "Duck Mood",
         },
     )
 
-    fig2.update_layout(
-        template="plotly_dark",
-        height=520,
-    )
-
+    fig2 = style_plot(fig2, height=520)
     st.plotly_chart(fig2, use_container_width=True)
 
     st.markdown("---")
@@ -370,7 +440,7 @@ if page == "Executive Summary":
     )
 
     selected_event = st.selectbox(
-        "Select a high-error event",
+        "Select a high-risk event",
         top_events[datetime_col].astype(str),
     )
 
@@ -378,16 +448,15 @@ if page == "Executive Summary":
         top_events[datetime_col].astype(str) == selected_event
     ].iloc[0]
 
-    e1, e2, e3, e4 = st.columns(4)
+    e1, e2, e3 = st.columns(3)
 
     e1.metric("Event Time", str(event_row[datetime_col]))
-    e2.metric("Actual", f"${event_row[actual_col]:,.2f}")
-    e3.metric("Prediction", f"${event_row[pred_col]:,.2f}")
-    e4.metric("Abs Error", f"${event_row['abs_error']:,.2f}")
+    e2.metric("Actual Price", f"${event_row[actual_col]:,.2f}")
+    e3.metric("Forecast Price", f"${event_row[pred_col]:,.2f}")
 
     show_duck_status(event_row["abs_error"], event_row[actual_col])
 
-    with st.expander("Show Top 20 Panic Events"):
+    with st.expander("Show Top 20 High-Risk Events"):
         st.dataframe(top_events, use_container_width=True)
 
 
@@ -429,12 +498,11 @@ elif page == "Forecast Viewer":
     selected_pred = selected_point[pred_col]
     selected_error = abs(selected_actual - selected_pred)
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     col1.metric("Selected Time", str(selected_time))
     col2.metric("Actual Price", f"${selected_actual:,.2f}")
     col3.metric("Predicted Price", f"${selected_pred:,.2f}")
-    col4.metric("Error", f"${selected_error:,.2f}")
 
     show_duck_status(selected_error, selected_actual)
 
@@ -457,18 +525,13 @@ elif page == "Forecast Viewer":
         annotation_position="top",
     )
 
-    fig.update_layout(
-        template="plotly_dark",
-        hovermode="x unified",
-        height=600,
-    )
-
+    fig = style_plot(fig, height=600)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Recent Predictions")
 
     st.dataframe(
-        plot_df[[datetime_col, actual_col, pred_col, "error", "abs_error", "duck_mood"]].tail(50),
+        plot_df[[datetime_col, actual_col, pred_col, "duck_mood"]].tail(50),
         use_container_width=True,
     )
 
@@ -481,15 +544,24 @@ elif page == "Error Analysis":
 
     st.title("🎯🦆 Error Analysis")
 
-    mean_error = df["error"].mean()
-    max_abs_error = df["abs_error"].max()
-    median_abs_error = df["abs_error"].median()
+    st.markdown(
+        """
+        This page keeps the model error metrics separate from the main dashboard.
+        Use this section only when you want to evaluate model performance.
+        """
+    )
 
-    col1, col2, col3 = st.columns(3)
+    mean_error = df["error"].mean()
+    rmse = np.sqrt(np.mean(df["error"] ** 2))
+    mae = df["abs_error"].mean()
+    max_abs_error = df["abs_error"].max()
+
+    col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("Mean Error", f"{mean_error:,.2f}")
-    col2.metric("Max Absolute Error", f"{max_abs_error:,.2f}")
-    col3.metric("Median Absolute Error", f"{median_abs_error:,.2f}")
+    col2.metric("RMSE", f"{rmse:,.2f}")
+    col3.metric("MAE", f"{mae:,.2f}")
+    col4.metric("Max Abs Error", f"{max_abs_error:,.2f}")
 
     high_error_threshold = st.slider(
         "High Error Threshold",
@@ -510,11 +582,7 @@ elif page == "Error Analysis":
         title="Prediction Error Distribution by Duck Mood",
     )
 
-    fig.update_layout(
-        template="plotly_dark",
-        height=500,
-    )
-
+    fig = style_plot(fig, height=500)
     st.plotly_chart(fig, use_container_width=True)
 
     fig2 = px.scatter(
@@ -530,11 +598,7 @@ elif page == "Error Analysis":
         },
     )
 
-    fig2.update_layout(
-        template="plotly_dark",
-        height=500,
-    )
-
+    fig2 = style_plot(fig2, height=500)
     st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("🚨 High Error Events")
