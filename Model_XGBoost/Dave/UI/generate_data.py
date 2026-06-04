@@ -102,9 +102,9 @@ for date in pd.date_range("2024-01-01", "2024-12-31", freq="D"):
 
 print(f"  {len(days_data)} days computed.")
 
-# ── Find demo day (2024-07-04) ────────────────────────────────────────────────
+# ── Find demo day (2024-07-05) ────────────────────────────────────────────────
 
-demo = next((d for d in days_data if d["date"] == "2024-07-04"), days_data[185])
+demo = next((d for d in days_data if d["date"] == "2024-07-05"), days_data[185])
 print(f"Demo day: {demo['date']}")
 
 # ── Write data.js ─────────────────────────────────────────────────────────────

@@ -86,7 +86,7 @@ def cost(prices, chosen, power, hours):
 # ────────────────────────── sidebar inputs ───────────────────────────────────
 
 with st.sidebar:
-    st.markdown('<div class="duck-title">Duck<span>stradamus</span> ⚡</div>',
+    st.markdown('<div class="duck-title">Duck<span>stradamus</span> 🦆⚡</div>',
                 unsafe_allow_html=True)
     st.markdown("### Settings")
     energy = st.number_input("Daily energy demand (MWh)", value=2.0, min_value=0.1, step=0.1)
@@ -100,25 +100,38 @@ with st.sidebar:
 
 if page == "Daily Charging":
     st.markdown(f"## Plan tomorrow's charging")
-    st.caption(f"Forecast for {DEMO_DAY['date']}")
+
+    # Day selection — defaults to demo day; picker lives at the bottom of the page.
+    all_dates = [d["date"] for d in DAYS_2024]
+    default_idx = all_dates.index(DEMO_DAY["date"]) if DEMO_DAY["date"] in all_dates else 0
+    chosen_date = st.session_state.get("chosen_date", DEMO_DAY["date"])
+    if chosen_date not in all_dates:
+        chosen_date = DEMO_DAY["date"]
+    day = next(d for d in DAYS_2024 if d["date"] == chosen_date)
+
+    st.caption(f"Forecast for {day['date']}")
 
     col_go, col_truth, _ = st.columns([1, 1, 4])
     go_clicked    = col_go.button("Go ▶", type="primary", use_container_width=True)
     show_truth    = col_truth.toggle("Show true prices")
 
-    pred   = DEMO_DAY["predicted"]
-    actual = DEMO_DAY["actual"]
+    pred   = day["predicted"]
+    actual = day["actual"]
     charge = cheapest_hours(pred, n_hours)
 
     chart_slot  = st.empty()
     status_slot = st.empty()
 
+    # Fixed y-axis range so the chart never rescales during the animation
+    y_max = max(max(pred), max(actual)) * 1.1
+
     def make_fig(n_points=24, highlight=None, with_truth=False):
         highlight = highlight or []
         fig = go.Figure()
-        # predicted curve (up to n_points)
+        # predicted curve — always 24 categories, pad unrevealed hours with None
+        y_pred_partial = pred[:n_points] + [None] * (24 - n_points)
         fig.add_trace(go.Scatter(
-            x=HOURS[:n_points], y=pred[:n_points],
+            x=HOURS, y=y_pred_partial,
             mode="lines", name="Predicted price",
             line=dict(color=ACCENT, width=3), fill="tozeroy",
             fillcolor="rgba(255,159,28,0.08)",
@@ -140,6 +153,8 @@ if page == "Daily Charging":
             height=440, margin=dict(l=40, r=20, t=30, b=40),
             yaxis_title="NZD / MWh", legend=dict(orientation="h", y=1.12),
             font=dict(color=TEXTDIM),
+            xaxis=dict(range=[-0.5, 23.5], type="category"),
+            yaxis=dict(range=[0, y_max]),
         )
         return fig
 
@@ -162,26 +177,41 @@ if page == "Daily Charging":
         status_slot.success(
             "Recommended charging hours: " + ", ".join(HOURS[i] for i in charge))
     else:
-        # static render (respects truth toggle)
         done = st.session_state.get("day_done", False)
-        chart_slot.plotly_chart(
-            make_fig(highlight=charge if done else None, with_truth=show_truth),
-            use_container_width=True, key="static")
+        if done:
+            # already animated this session — show full curve + charging hours
+            chart_slot.plotly_chart(
+                make_fig(highlight=charge, with_truth=show_truth),
+                use_container_width=True, key="static")
+        else:
+            # fresh load — empty chart, prompt the user to press Go
+            chart_slot.plotly_chart(
+                make_fig(n_points=0, with_truth=False),
+                use_container_width=True, key="static")
+            status_slot.info("Press **Go ▶** to reveal the price forecast.")
 
-    # stats (cost on TRUE price = what you'd actually pay)
-    if st.session_state.get("day_done", False):
-        unif = uniform_hours(n_hours)
-        smart_cost   = cost(actual, charge, power, n_hours)
-        uniform_cost = cost(actual, unif,   power, n_hours)
-        saved = uniform_cost - smart_cost
-        pct = 100 * saved / uniform_cost if uniform_cost else 0
+    # stats (cost on TRUE price = what you'd actually pay) — always shown
+    unif = uniform_hours(n_hours)
+    smart_cost   = cost(actual, charge, power, n_hours)
+    uniform_cost = cost(actual, unif,   power, n_hours)
+    saved = uniform_cost - smart_cost
+    pct = 100 * saved / uniform_cost if uniform_cost else 0
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Charging hours", f"{n_hours} h",
-                  f"{power*n_hours:.1f} MWh")
-        c2.metric("Smart charging", f"${smart_cost:.2f}")
-        c3.metric("Charge anytime", f"${uniform_cost:.2f}")
-        c4.metric("You save", f"${saved:.2f}", f"{pct:.1f}% cheaper")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Charging hours", f"{n_hours} h",
+              f"{power*n_hours:.1f} MWh")
+    c2.metric("Smart charging", f"${smart_cost:.2f}")
+    c3.metric("Charge anytime", f"${uniform_cost:.2f}")
+    c4.metric("You save", f"${saved:.2f}", f"{pct:.1f}% cheaper")
+
+    # ── Advanced (bottom of page) ─────────────────────────────────────────────
+    st.markdown("---")
+    with st.expander("Advanced", expanded=False):
+        picked = st.selectbox("Forecast day", all_dates, index=all_dates.index(chosen_date))
+        if picked != chosen_date:
+            st.session_state["chosen_date"] = picked
+            st.session_state["day_done"] = False
+            st.rerun()
 
 # ════════════════════════ PAGE 2: YEARLY ═════════════════════════════════════
 
