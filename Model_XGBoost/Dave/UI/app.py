@@ -83,6 +83,17 @@ def cost(prices, chosen, power, hours):
     mean = np.mean([prices[i] for i in chosen])
     return mean * power * hours
 
+def saved_metric(label, value, sub=""):
+    """Custom metric card with an orange value — for the headline savings number."""
+    st.markdown(f"""
+    <div style="background:{PANEL}; border:1px solid {ACCENT};
+                border-radius:12px; padding:16px 18px;">
+      <div style="font-size:14px; color:{TEXTDIM};">{label}</div>
+      <div style="font-size:30px; font-weight:700; color:{ACCENT}; margin-top:4px;">{value}</div>
+      <div style="font-size:13px; color:{ACCENT}; opacity:.8; margin-top:2px;">{sub}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
 # ────────────────────────── sidebar inputs ───────────────────────────────────
 
 with st.sidebar:
@@ -200,9 +211,10 @@ if page == "Daily Charging":
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Charging hours", f"{n_hours} h",
               f"{power*n_hours:.1f} MWh")
-    c2.metric("Smart charging", f"${smart_cost:.2f}")
-    c3.metric("Charge anytime", f"${uniform_cost:.2f}")
-    c4.metric("You save", f"${saved:.2f}", f"{pct:.1f}% cheaper")
+    c2.metric("Smart charging", f"${smart_cost:,.0f}")
+    c3.metric("Charge anytime", f"${uniform_cost:,.0f}")
+    with c4:
+        saved_metric("You save", f"${saved:,.0f}", f"{pct:.1f}% cheaper")
 
     # ── Advanced (bottom of page) ─────────────────────────────────────────────
     st.markdown("---")
@@ -240,7 +252,8 @@ else:
     vs_naive = cum_naive - cum_model
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total saved vs flat", f"${total_save:,.0f}", f"{pct:.1f}% cheaper")
+    with c1:
+        saved_metric("Total saved vs flat", f"${total_save:,.0f}", f"{pct:.1f}% cheaper")
     c2.metric("Smart charging cost", f"${cum_model:,.0f}")
     c3.metric("Flat charging cost",  f"${cum_uniform:,.0f}")
     c4.metric("vs Naive model", f"${vs_naive:,.0f}",
